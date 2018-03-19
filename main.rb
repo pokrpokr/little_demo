@@ -1,4 +1,6 @@
 require File.expand_path('../read_data', __FILE__)
+require File.expand_path('../query_data', __FILE__)
+require File.expand_path('../oa_get_binding', __FILE__)
 
 class Main
 	def initialize(type)
@@ -7,25 +9,42 @@ class Main
 		when :FY
 			file_path = Config::FY_PATH
 			new_file_path = Config::FY_NEW_PATH
+			api_name = 'fydd'
 		when :JP
 			file_path = Config::JP_PATH
 			new_file_path = Config::JP_NEW_PATH
+			api_name = 'jpdd'
 		when :JD
 			file_path = Config::JD_PATH
 			new_file_path = Config::JD_NEW_PATH
+			api_name = 'jddd'
 		when :DX
 			file_path = Config::DX_PATH
 			new_file_path = Config::DX_NEW_PATH
+			api_name = 'dxfwdd'
 		end
 		@new_file_path = new_file_path
 		@read_data = ReadData.new(file_path)
+		@api_name = api_name
+		api_url = Config::FORMAL_API_URL
+		userName = Config::FORMAL_USERNAME
+		password = Config::FORMAL_PASSWORD
+		oa_get_binding = OaGetBinding.new(api_url, userName, password)
+		@result        = oa_get_binding.request
+		@query         = QueryData.new(api_url)
 	end
 
 	def run
+		if @result[:result]
+			binding     = @result[:binding]
+		else
+			puts '登录失败' and return
+		end
+
 		result = @read_data.read_data
 
 		puts '@@@' * 50
-		puts result[:mal].length, result[:mat].length
+		puts result[:mat].length
 
 		result[:mat].each do |data|
 			n = 0
@@ -40,19 +59,21 @@ class Main
 			result[:names] << new_name
 			data.name = new_name
 
-			result[:mal] << data
+			result[:aft] << data
 		end
 
 		puts '###' * 50
-		puts result[:mal].length
+		puts result[:aft].length
 
 		CSV.open(@new_file_path, 'wb', encoding: 'gb18030') do |csv|
-			if result[:mal].count == 0
+			if result[:aft].count == 0
 				csv << ['无订单数据']
 			else
-				csv << %w(id[记录ID] name[订单编号])
-				result[:mal].each do |record|
-					csv << [record.id, record.name]
+				csv << %w(id[记录ID] name[订单编号] success[是否成功])
+				result[:aft].each do |record|
+					sql = "update #{@api_name} set name='#{record.name}' where id='#{record.id}'"
+					query_result = @query.query_data(@api_name, binding, sql)
+					csv << [record.id, record.name, query_result[:result]]
 				end
 			end
 		end

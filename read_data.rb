@@ -9,7 +9,6 @@ class ReadData
 
 	def read_data
 		readed_datas = {}
- 		formal_datas = []
 		format_datas = []
 		formal_names = []
 		recordtypes =
@@ -24,13 +23,12 @@ class ReadData
 				format_datas << data
 			else
 				formal_names << row['name']
-				formal_datas << data
 			end
 		end
 
-		readed_datas[:mal] = formal_datas
 		readed_datas[:mat] = format_datas
 		readed_datas[:names] = formal_names
+		readed_datas[:aft] = []
 
 		readed_datas
 
